@@ -64,6 +64,7 @@ to build out more elaborate abstractions it starts to become painful to use.
     }
 
     // And now you want a have function which calls into that trait:
+    # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     unsafe fn do_calculations<B>(xs: &[u32]) -> u32 where B: Backend {
         let value = B::sum(xs);
         // ...do some more calculations here...
@@ -82,6 +83,15 @@ This crate exposes an `#[unsafe_target_feature]` macro which works just like `#[
 it moves the `unsafe` from the function prototype into the macro name, and can be used on safe functions.
 
 ```rust
+// ERROR: `#[target_feature(..)]` can only be applied to `unsafe` functions
+// on versions < 1.86.0
+# #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[target_feature(enable = "avx2")]
+fn func() {}
+```
+
+```rust
+// It works, but must be `unsafe`
 # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn func() {}
@@ -104,7 +114,7 @@ struct S;
 impl core::ops::Add for S {
     type Output = S;
     // ERROR: method `add` has an incompatible type for trait
-    #[target_feature(enable = "avx2")]
+    #[target_feature(enable = "neon")]
     unsafe fn add(self, rhs: S) -> S {
         S
     }

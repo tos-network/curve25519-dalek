@@ -13,9 +13,11 @@
 // Display) should be snake cased, for some reason.
 #![allow(non_snake_case)]
 
-use core::error::Error;
 use core::fmt;
 use core::fmt::Display;
+
+#[cfg(feature = "std")]
+use std::error::Error;
 
 /// Internal errors.  Most application-level developers will likely not
 /// need to pay any attention to these.
@@ -58,7 +60,7 @@ impl Display for InternalError {
             InternalError::PointDecompression => write!(f, "Cannot decompress Edwards point"),
             InternalError::ScalarFormat => write!(f, "Cannot use scalar with high-bit set"),
             InternalError::BytesLength { name: n, length: l } => {
-                write!(f, "{n} must be {l} bytes in length")
+                write!(f, "{} must be {} bytes in length", n, l)
             }
             InternalError::Verify => write!(f, "Verification equation was not satisfied"),
             #[cfg(feature = "batch")]
@@ -71,8 +73,9 @@ impl Display for InternalError {
                 length_c: lc,
             } => write!(
                 f,
-                "Arrays must be the same length: {na} has length {la},
-                              {nb} has length {lb}, {nc} has length {lc}.",
+                "Arrays must be the same length: {} has length {},
+                              {} has length {}, {} has length {}.",
+                na, la, nb, lb, nc, lc
             ),
             #[cfg(feature = "digest")]
             InternalError::PrehashedContextLength => write!(
@@ -84,6 +87,7 @@ impl Display for InternalError {
     }
 }
 
+#[cfg(feature = "std")]
 impl Error for InternalError {}
 
 /// Errors which may occur while processing signatures and keypairs.
@@ -103,12 +107,12 @@ impl Error for InternalError {}
 pub type SignatureError = ed25519::signature::Error;
 
 impl From<InternalError> for SignatureError {
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     fn from(_err: InternalError) -> SignatureError {
         SignatureError::new()
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn from(err: InternalError) -> SignatureError {
         SignatureError::from_source(err)
     }

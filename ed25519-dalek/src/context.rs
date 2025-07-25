@@ -24,10 +24,9 @@ use crate::{InternalError, SignatureError};
 /// use ed25519_dalek::{Signature, SigningKey, VerifyingKey, Sha512};
 /// # use curve25519_dalek::digest::Digest;
 /// # use rand::rngs::OsRng;
-/// # use rand_core::TryRngCore;
 /// use ed25519_dalek::{DigestSigner, DigestVerifier};
 ///
-/// # let mut csprng = OsRng.unwrap_err();
+/// # let mut csprng = OsRng;
 /// # let signing_key = SigningKey::generate(&mut csprng);
 /// # let verifying_key = signing_key.verifying_key();
 /// let context_str = b"Local Channel 3";
@@ -85,13 +84,13 @@ mod test {
 
     use crate::{Signature, SigningKey, VerifyingKey};
     use curve25519_dalek::digest::Digest;
-    use rand::{TryRngCore, rngs::OsRng};
+    use ed25519::signature::{DigestSigner, DigestVerifier};
+    use rand::rngs::OsRng;
     use sha2::Sha512;
-    use signature::{DigestSigner, DigestVerifier};
 
     #[test]
     fn context_correctness() {
-        let mut csprng = OsRng.unwrap_err();
+        let mut csprng = OsRng;
         let signing_key: SigningKey = SigningKey::generate(&mut csprng);
         let verifying_key: VerifyingKey = signing_key.verifying_key();
 

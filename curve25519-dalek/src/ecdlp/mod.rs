@@ -5,7 +5,7 @@
 //!
 //! The algorithm depends on a constant `L1` parameter, which enables changing the space/time tradeoff.
 //! To use a given `L1` constant, you need to generate a precomputed tables file, or download a pre-generated one.
-//! The resulting file may be quite big, which is why it is recommended to load it at runtime using [`ecdlp::ECDLPTablesFile`].
+//! The resulting file may be quite big, which is why it is recommanded to load it at runtime using [`ecdlp::ECDLPTablesFile`].
 //!
 //! The algorithm works for any range, but keep in mind that the time the algorithm takes grows exponentially: with the same
 //! precomputed tables, decoding an `n+1`-bit integer will take 2x as long as an `n`-bit integer. By default, unless the "pseudo"
@@ -91,8 +91,8 @@ mod affine_montgomery;
 mod table;
 
 use crate::{
-    RistrettoPoint, Scalar, constants::MONTGOMERY_A_NEG, constants::RISTRETTO_BASEPOINT_POINT as G,
-    field::FieldElement,
+    constants::MONTGOMERY_A_NEG, constants::RISTRETTO_BASEPOINT_POINT as G, field::FieldElement,
+    RistrettoPoint, Scalar,
 };
 use affine_montgomery::AffineMontgomeryPoint;
 use core::{
@@ -101,14 +101,14 @@ use core::{
 };
 
 pub use table::{
-    ECDLPTablesFileView, NoOpProgressTableGenerationReportFunction,
-    ProgressTableGenerationReportFunction, ReportStep, table_generation,
+    table_generation, ECDLPTablesFileView, NoOpProgressTableGenerationReportFunction,
+    ProgressTableGenerationReportFunction, ReportStep,
 };
 
 use table::{BATCH_SIZE, L2};
 
 /// A trait to represent progress report functions.
-/// It is auto-implemented on any `F: Fn(f64) -> ControlFlow<()>`.
+/// It is auto-implemented on any `F: Fn(f64) -> ConstrolFlow<()>`.
 pub trait ProgressReportFunction {
     /// Run the progress report function.
     fn report(&self, progress: f64) -> ControlFlow<()>;
@@ -466,7 +466,7 @@ pub fn par_decode<R: ProgressReportFunction + Sync>(
 ) -> Option<i64> {
     let end_flag = AtomicBool::new(false);
 
-    std::thread::scope(|s| {
+    let res = std::thread::scope(|s| {
         let handles = (0..args.n_threads)
             .map(|thread_i| {
                 let (offset, normalized, num_batches) =
@@ -504,7 +504,7 @@ pub fn par_decode<R: ProgressReportFunction + Sync>(
                     }
                 }
 
-                s.spawn(move || {
+                let handle = s.spawn(move || {
                     let point_iter =
                         make_point_iterator(precomputed_tables, normalized, num_batches);
                     let res = fast_ecdlp(
@@ -522,7 +522,9 @@ pub fn par_decode<R: ProgressReportFunction + Sync>(
                     }
 
                     res.map(|v| offset + v as i64)
-                })
+                });
+
+                handle
             })
             .collect::<Vec<_>>();
 
@@ -533,7 +535,9 @@ pub fn par_decode<R: ProgressReportFunction + Sync>(
         }
 
         res
-    })
+    });
+
+    res
 }
 
 fn fast_ecdlp(
@@ -577,7 +581,7 @@ fn fast_ecdlp(
 
         // Case 2: j=0. Has to be handled separately.
         if t1_table
-            .lookup(&target_montgomery.u.to_bytes(), |i| {
+            .lookup(&target_montgomery.u.as_bytes(), |i| {
                 consider_candidate(j_start_shifted + i as i64)
                     || consider_candidate(j_start_shifted - i as i64)
             })
@@ -625,7 +629,7 @@ fn fast_ecdlp(
             // Case 3: general case, negative j.
             let j_start_shifted = (j_start as i64 - j as i64) << precomputed_tables.get_l1();
             if t1_table
-                .lookup(&qx.to_bytes(), |i| {
+                .lookup(&qx.as_bytes(), |i| {
                     consider_candidate(j_start_shifted + i as i64)
                         || consider_candidate(j_start_shifted - i as i64)
                 })
@@ -645,7 +649,7 @@ fn fast_ecdlp(
             // Case 4: general case, positive j.
             let j_start_shifted = (j_start as i64 + j as i64) << precomputed_tables.get_l1();
             if t1_table
-                .lookup(&qx.to_bytes(), |i| {
+                .lookup(&qx.as_bytes(), |i| {
                     consider_candidate(j_start_shifted + i as i64)
                         || consider_candidate(j_start_shifted - i as i64)
                 })
@@ -680,7 +684,7 @@ mod tests {
     };
 
     use super::*;
-    use rand::{Rng, rng};
+    use rand::Rng;
 
     const L1: usize = 26;
 
@@ -713,13 +717,13 @@ mod tests {
         let view = tables.view();
 
         for i in (0..(1u64 << 48)).step_by(1 << L1).take(1 << 12) {
-            let delta = rng().random_range(0..(1 << L1));
+            let delta = rand::thread_rng().gen_range(0..(1 << L1));
 
             let num = i + delta;
             let point = RistrettoPoint::mul_base(&Scalar::from(num));
 
             // take a random point from the coset4
-            let coset_i = rng().random_range(0..4);
+            let coset_i = rand::thread_rng().gen_range(0..4);
             let point = point.coset4()[coset_i];
 
             let res = decode(
@@ -740,7 +744,7 @@ mod tests {
             let num = i; // rand::thread_rng().gen_range(0u64..(1 << 48));
             let mut point = RistrettoPoint::mul_base(&Scalar::from(num));
 
-            if rng().random() {
+            if rand::thread_rng().gen() {
                 // do a round of compression/decompression to mess up the Z and Ts
                 // & ecdlp will need to clear the cofactor
                 point = point.compress().decompress().unwrap();
