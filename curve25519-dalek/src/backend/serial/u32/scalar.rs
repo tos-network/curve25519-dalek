@@ -12,6 +12,7 @@
 
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
+
 use subtle::{Choice, ConditionallySelectable};
 
 #[cfg(feature = "zeroize")]
@@ -202,6 +203,47 @@ impl Scalar29 {
             let underflow = Choice::from((borrow >> 31) as u8);
             let addend = u32::conditional_select(&0, &constants::L[i], underflow);
             carry = (carry >> 29) + difference[i] + addend;
+
+            difference[i] = carry & mask;
+        }
+
+        difference
+    }
+
+    /// Compute `a + b` (mod l) in variable-time.
+    pub fn vartime_add(a: &Scalar29, b: &Scalar29) -> Scalar29 {
+        let mut sum = Scalar29::ZERO;
+        let mask = (1u32 << 29) - 1;
+
+        // a + b
+        let mut carry: u32 = 0;
+        for i in 0..9 {
+            carry = a[i] + b[i] + (carry >> 29);
+            sum[i] = carry & mask;
+        }
+
+        // subtract l if the sum is >= l
+        Scalar29::vartime_sub(&sum, &constants::L)
+    }
+
+    /// Compute `a - b` (mod l) in variable-time.
+    pub fn vartime_sub(a: &Scalar29, b: &Scalar29) -> Scalar29 {
+        let mut difference = Scalar29::ZERO;
+        let mask = (1u32 << 29) - 1;
+
+        // a - b
+        let mut borrow: u32 = 0;
+        for i in 0..9 {
+            borrow = a[i].wrapping_sub(b[i] + (borrow >> 31));
+            difference[i] = borrow & mask;
+        }
+
+        // conditionally add l if the difference is negative
+        let underflow_mask = ((borrow >> 31) ^ 1).wrapping_sub(1);
+        let mut carry: u32 = 0;
+        for i in 0..9 {
+            carry = (carry >> 29) + difference[i] + (constants::L[i] & underflow_mask);
+
             difference[i] = carry & mask;
         }
 

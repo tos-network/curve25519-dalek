@@ -34,6 +34,7 @@ features = [
     "digest",
     "legacy_compatibility",
     "group-bits",
+    "ecdlp",
 ]
 
 [dev-dependencies]
@@ -52,6 +53,11 @@ name = "dalek_benchmarks"
 harness = false
 required-features = ["alloc", "rand_core"]
 
+[[bench]]
+name = "ecdlp"
+harness = false
+required-features = ["alloc", "rand_core", "std", "ecdlp"]
+
 [dependencies]
 cfg-if = "1"
 ff = { version = "=0.14.0-pre.0", default-features = false, optional = true }
@@ -67,6 +73,7 @@ serde = { version = "1.0", default-features = false, optional = true, features =
     "derive",
 ] }
 zeroize = { version = "1", default-features = false, optional = true }
+bytemuck = { version = "1.14.0", features = ["derive"], optional = true }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 cpufeatures = "0.2.17"
@@ -75,16 +82,18 @@ cpufeatures = "0.2.17"
 fiat-crypto = { version = "0.3.0", default-features = false }
 
 [features]
-default = ["alloc", "precomputed-tables", "zeroize"]
+default = ["alloc", "precomputed-tables", "zeroize", "ecdlp"]
 alloc = ["zeroize?/alloc"]
+std = []
 precomputed-tables = []
 legacy_compatibility = []
 group = ["dep:group", "rand_core"]
 group-bits = ["group", "ff/bits"]
+ecdlp = ["alloc", "std", "dep:bytemuck"]
 digest = ["dep:digest"]
 
 [target.'cfg(all(not(curve25519_dalek_backend = "fiat"), not(curve25519_dalek_backend = "serial"), target_arch = "x86_64"))'.dependencies]
-curve25519-dalek-derive = "0.1"
+curve25519-dalek-derive = { version = "0.1", path = "../curve25519-dalek-derive" }
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

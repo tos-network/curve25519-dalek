@@ -16,6 +16,9 @@ Entries are listed in reverse chronological order per undeprecated major series.
 * Remove `std` feature
 * Make signing and verifying keys use `pkcs8::spki::SignatureAlgorithmIdentifier` instead of `DynSignatureAlgorithmIdentifier`
 
+* ECDLP feature
+* Bump MSRV from 1.60.0 to 1.80.0
+
 # 2.x series
 
 ## 2.2.0
